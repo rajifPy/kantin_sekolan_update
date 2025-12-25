@@ -603,57 +603,116 @@ def data_master_page():
 def scan_page():
     st.markdown("<h1 class='main-header'>📷 Scan Barcode & Transaksi</h1>", unsafe_allow_html=True)
     
-    tab1, tab2 = st.tabs(["📷 Webcam Scanner", "⌨️ Input Manual"])
+    tab1, tab2 = st.tabs(["📷 Webcam Scanner (Browser)", "⌨️ Input Manual"])
     
-    # Tab Webcam Scanner
+    # Tab Webcam Scanner with Streamlit Preview
     with tab1:
-        st.subheader("Scan Barcode via Webcam")
+        st.subheader("Scan Barcode via Webcam - Ambil Foto")
         
         # Check scanner availability
         availability = check_scanner_availability()
         
         if availability['available']:
-            st.info("✅ Webcam scanner tersedia")
+            st.success("✅ Webcam scanner tersedia")
             
-            if st.button("📷 Mulai Scan Barcode", use_container_width=True):
-                with st.spinner("Membuka kamera... Arahkan barcode ke kamera"):
-                    result = scan_barcode_from_camera()
+            st.markdown("""
+            ### 📸 Cara Menggunakan:
+            1. Klik tombol **"Take Photo"** di bawah preview kamera
+            2. Izinkan akses kamera jika diminta browser
+            3. Arahkan barcode ke kamera
+            4. Ambil foto saat barcode jelas dan fokus ✅
+            5. Barcode akan otomatis di-scan dari foto
+            
+            💡 **Tips untuk hasil terbaik:**
+            - Pastikan pencahayaan cukup
+            - Jarak ideal: 10-20 cm dari kamera
+            - Foto harus fokus dan tidak blur
+            - Barcode harus jelas terbaca
+            """)
+            
+            # Call scanner function
+            result = scan_barcode_from_camera_streamlit()
+            
+            if result['success']:
+                st.session_state.last_scan = result['barcode_id']
+                st.success(result['message'])
+                st.balloons()
+                time.sleep(1)
+                st.rerun()
+            elif result['message'] != "Ambil foto barcode terlebih dahulu":
+                st.error(result['message'])
+            
+            st.markdown("---")
+            
+            # Alternatif: Desktop Window Scanner
+            with st.expander("🖥️ Alternatif: Desktop Window Scanner"):
+                st.info("""
+                Jika preview di browser tidak berfungsi, gunakan **Desktop Window Scanner**:
+                - Preview muncul di window terpisah (bukan di browser)
+                - Lebih stabil untuk beberapa sistem
+                - Tekan 'Q' di keyboard untuk keluar
+                """)
+                
+                if st.button("🖥️ Open Desktop Window Scanner", use_container_width=True):
+                    with st.spinner("Membuka kamera di desktop window..."):
+                        result = scan_barcode_from_camera()
                     
                     if result['success']:
                         st.session_state.last_scan = result['barcode_id']
                         st.success(result['message'])
+                        st.balloons()
                         st.rerun()
                     else:
                         st.error(result['message'])
+        
         else:
             st.warning(availability['message'])
-            st.info("💡 Gunakan **Input Manual** sebagai alternatif")
+            st.info("💡 Gunakan **Input Manual** sebagai alternatif (Tab sebelah)")
     
     # Tab Input Manual
     with tab2:
         st.subheader("Input Manual Barcode")
         
+        st.info("""
+        ### 📝 Input Manual - Cara Tercepat!
+        Input manual adalah alternatif yang **sama efektifnya** dengan scan:
+        - ✅ Tidak perlu kamera
+        - ✅ Lebih cepat (langsung ketik)
+        - ✅ Tidak tergantung pencahayaan
+        - ✅ 100% akurat
+        
+        **Cara:** Ketik Barcode ID produk (contoh: `BRK001`, `BRK002`)
+        """)
+        
         col1, col2 = st.columns([2, 1])
+        
         with col1:
-            barcode_input = st.text_input("Masukkan Barcode ID", 
-                                         placeholder="BRK001",
-                                         value=st.session_state.last_scan if st.session_state.last_scan else "")
+            barcode_input = st.text_input(
+                "Masukkan Barcode ID", 
+                placeholder="BRK001",
+                value=st.session_state.last_scan if st.session_state.last_scan else "",
+                help="Ketik Barcode ID produk dan tekan Enter atau klik Cari"
+            )
+        
         with col2:
             st.write("")
             st.write("")
-            if st.button("🔍 Cari Produk", use_container_width=True):
+            if st.button("🔍 Cari Produk", use_container_width=True, type="primary"):
                 if barcode_input:
                     st.session_state.last_scan = barcode_input
                     st.rerun()
+                else:
+                    st.warning("⚠️ Masukkan Barcode ID terlebih dahulu!")
     
-    # Jika ada barcode yang di-scan
+    # Jika ada barcode yang di-scan/input
     if st.session_state.last_scan:
         st.markdown("---")
-        st.subheader("Detail Produk")
+        st.subheader("📦 Detail Produk")
         
         product = get_product_by_barcode(st.session_state.last_scan)
         
         if product is not None:
+            # Display product info
             col1, col2, col3 = st.columns([2, 2, 1])
             
             with col1:
@@ -686,7 +745,13 @@ def scan_page():
             with col_trans1:
                 max_qty = int(product['stok'])
                 if max_qty > 0:
-                    jumlah = st.number_input("Jumlah", min_value=1, max_value=max_qty, value=1)
+                    jumlah = st.number_input(
+                        "Jumlah", 
+                        min_value=1, 
+                        max_value=max_qty, 
+                        value=1,
+                        help=f"Maksimal: {max_qty}"
+                    )
                 else:
                     st.error("❌ Stok habis!")
                     jumlah = 0
@@ -703,22 +768,50 @@ def scan_page():
             
             if jumlah > 0:
                 col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 1])
+                
                 with col_btn2:
                     if st.button("💸 PROSES PENJUALAN", use_container_width=True, type="primary"):
-                        result = reduce_stock(product['barcode_id'], jumlah, 
-                                            product['nama_produk'], product['harga_jual'])
+                        result = reduce_stock(
+                            product['barcode_id'], 
+                            jumlah, 
+                            product['nama_produk'], 
+                            product['harga_jual']
+                        )
+                        
                         if result['success']:
                             st.success(result['message'])
                             st.balloons()
+                            
+                            # Show transaction summary
+                            st.markdown("---")
+                            st.markdown("### ✅ Transaksi Berhasil!")
+                            
+                            col_sum1, col_sum2, col_sum3 = st.columns(3)
+                            
+                            with col_sum1:
+                                st.metric("Produk Terjual", f"{jumlah} pcs")
+                            with col_sum2:
+                                st.metric("Total Penjualan", format_currency(total_harga))
+                            with col_sum3:
+                                st.metric("Keuntungan", format_currency(total_keuntungan))
+                            
+                            # Clear scan
                             st.session_state.last_scan = None
+                            
+                            # Auto refresh after 2 seconds
+                            time.sleep(2)
                             st.rerun()
                         else:
                             st.error(result['message'])
         else:
             st.error(f"❌ Produk dengan barcode **{st.session_state.last_scan}** tidak ditemukan!")
-            if st.button("🔄 Coba Lagi"):
-                st.session_state.last_scan = None
-                st.rerun()
+            
+            col_err1, col_err2, col_err3 = st.columns([1, 1, 1])
+            
+            with col_err2:
+                if st.button("🔄 Coba Lagi", use_container_width=True):
+                    st.session_state.last_scan = None
+                    st.rerun()
 
 # Laporan page
 def laporan_page():
