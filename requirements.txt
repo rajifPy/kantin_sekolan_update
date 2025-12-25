@@ -7,9 +7,8 @@ Pillow==10.2.0
 openpyxl==3.1.2
 tqdm==4.66.1
 
-# Barcode Scanner - Windows Compatible
+# Barcode Scanner
 opencv-python==4.9.0.80
 pyzxing==0.2
-
-# Alternative jika opencv-python error:
-# opencv-python-headless==4.9.0.80
+pyzbar==0.1.9
+qrcode==7.4.2
