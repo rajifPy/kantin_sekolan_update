@@ -1,0 +1,15 @@
+streamlit==1.31.0
+pandas==2.1.4
+numpy==1.26.3
+plotly==5.18.0
+python-barcode==0.15.1
+Pillow==10.2.0
+openpyxl==3.1.2
+tqdm==4.66.1
+
+# Barcode Scanner - Windows Compatible
+opencv-python==4.9.0.80
+pyzxing==0.2
+
+# Alternative jika opencv-python error:
+# opencv-python-headless==4.9.0.80
