@@ -3,7 +3,7 @@ pandas==2.1.4
 numpy==1.26.3
 plotly==5.18.0
 python-barcode==0.15.1
-Pillow==10.2.0
+Pillow
 openpyxl==3.1.2
 tqdm==4.66.1
 
